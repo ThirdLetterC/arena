@@ -192,6 +192,14 @@
 */
 
 /*
+   MODIFIED FILE NOTICE
+   This file has been modified from the original upstream work.
+   Primary changes include migrating project constraints and usage from
+   a C89 baseline to a C23 baseline, plus related implementation updates.
+   See NOTICE in the repository root for attribution details.
+*/
+
+/*
     #########################
     ####                 ####
     #### ARENA ALLOCATOR ####

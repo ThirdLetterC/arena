@@ -10,7 +10,8 @@ Single-header arena allocator. C23.
   * 1.2 [C23 Baseline](#c23-baseline)
   * 1.3 [Single-Header Libraries](#single-header-libraries)
   * 1.4 [Disclaimer](#disclaimer)
-  * 1.5 [LICENSE](#LICENSE)
+  * 1.5 [Attribution and Modification Notice](#attribution-and-modification-notice)
+  * 1.6 [LICENSE](#LICENSE)
 2. **[Usage](#usage)**
   * 2.1 [Including](#including)
   * 2.2 [Functions and Macros](#functions-and-macros)
@@ -54,6 +55,13 @@ Linking is sluggish and complicated. Many beginners often times struggle with le
 
 ### Disclaimer
 This does not implement a kernel-level allocator, but instead wraps `malloc` and `free` (standard library or custom, your choice).
+
+### Attribution and Modification Notice
+This repository is a derivative work of the original "Arena Allocator" by Carter Dugan.
+
+Per Apache-2.0 redistribution requirements, modified files carry prominent change notices and repository-level attribution is provided in `NOTICE`.
+
+Notable derivative changes include migrating constraints and usage from a C89 baseline to C23 and associated implementation/build/test updates.
 
 
 ### LICENSE
