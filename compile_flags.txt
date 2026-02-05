@@ -1,0 +1,8 @@
+-std=c2x
+-Wall
+-Wextra
+-Wpedantic
+-Werror
+-Og
+-g
+-Ivendor/rktest
