@@ -35,6 +35,7 @@ TEST(arena_alloc_tests, basic) {
   EXPECT_TRUE(arena.region == bytes);
   EXPECT_LONG_EQ((long)arena.index, 8);
   EXPECT_LONG_EQ((long)arena.allocations, 1);
+  arena_clear(&arena);
 }
 
 TEST(arena_alloc_aligned_tests, edge_case_tight_space) {
@@ -49,4 +50,20 @@ TEST(arena_alloc_aligned_tests, edge_case_tight_space) {
   ASSERT_TRUE(ptr != nullptr);
   EXPECT_LONG_EQ((long)arena.index, 30);
   EXPECT_LONG_EQ((long)arena.allocations, 1);
+  arena_clear(&arena);
+}
+
+TEST(arena_copy_tests, clamps_source_index_to_source_size) {
+  char src_region[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+  char dest_region[64];
+  Arena src;
+  Arena dest;
+
+  arena_init(&src, src_region, sizeof(src_region));
+  arena_init(&dest, dest_region, sizeof(dest_region));
+  src.index = 16;
+
+  const size_t bytes_copied = arena_copy(&dest, &src);
+  EXPECT_LONG_EQ((long)bytes_copied, (long)sizeof(src_region));
+  EXPECT_LONG_EQ((long)dest.index, (long)sizeof(src_region));
 }

@@ -557,7 +557,8 @@ size_t arena_copy(Arena *dest, Arena *src) {
     return 0;
   }
 
-  bytes = (src->index < dest->size) ? src->index : dest->size;
+  const size_t src_bytes = (src->index < src->size) ? src->index : src->size;
+  bytes = (src_bytes < dest->size) ? src_bytes : dest->size;
 
   if (bytes != 0) {
     ARENA_MEMCPY(dest->region, src->region, bytes);
