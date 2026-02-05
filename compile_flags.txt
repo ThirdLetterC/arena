@@ -5,4 +5,4 @@
 -Werror
 -Og
 -g
--Ivendor/rktest
+-Iinclude

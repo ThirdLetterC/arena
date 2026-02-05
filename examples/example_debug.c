@@ -2,7 +2,7 @@
 
 #define ARENA_DEBUG
 #define ARENA_IMPLEMENTATION
-#include "../arena.h"
+#include <arena/arena.h>
 
 int main() {
   constexpr size_t arena_size = 1'024;

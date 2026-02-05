@@ -27,10 +27,10 @@ pub fn build(b: *std.Build) void {
         .name = "test",
         .root_module = tests_module,
     });
-    tests_exe.addCSourceFile(.{ .file = b.path("tests.c"), .flags = test_cflags });
-    tests_exe.addCSourceFile(.{ .file = b.path("vendor/rktest/rktest.c"), .flags = test_cflags });
-    tests_exe.addCSourceFile(.{ .file = b.path("arena.c"), .flags = test_cflags });
-    tests_exe.addIncludePath(b.path("vendor/rktest"));
+    tests_exe.addCSourceFile(.{ .file = b.path("src/tests.c"), .flags = test_cflags });
+    tests_exe.addCSourceFile(.{ .file = b.path("src/rktest.c"), .flags = test_cflags });
+    tests_exe.addCSourceFile(.{ .file = b.path("src/arena.c"), .flags = test_cflags });
+    tests_exe.addIncludePath(b.path("include"));
     tests_exe.linkLibC();
     tests_exe.linkSystemLibrary("m");
     b.installArtifact(tests_exe);
@@ -46,15 +46,15 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_tests.step);
 
     const examples_step = b.step("examples", "Build all examples");
-    var examples_dir = b.build_root.handle.openDir("code_examples", .{ .iterate = true }) catch |err| {
-        std.debug.panic("failed to open code_examples: {s}", .{@errorName(err)});
+    var examples_dir = b.build_root.handle.openDir("examples", .{ .iterate = true }) catch |err| {
+        std.debug.panic("failed to open examples: {s}", .{@errorName(err)});
     };
     defer examples_dir.close();
 
     var iter = examples_dir.iterate();
     while (true) {
         const entry = iter.next() catch |err| {
-            std.debug.panic("failed to iterate code_examples: {s}", .{@errorName(err)});
+            std.debug.panic("failed to iterate examples: {s}", .{@errorName(err)});
         } orelse break;
 
         if (entry.kind != .file) {
@@ -74,9 +74,11 @@ pub fn build(b: *std.Build) void {
             .name = stem,
             .root_module = example_module,
         });
-        const source_path = b.fmt("code_examples/{s}", .{entry.name});
+        const source_path = b.fmt("examples/{s}", .{entry.name});
         exe.addCSourceFile(.{ .file = b.path(source_path), .flags = common_cflags });
+        exe.addIncludePath(b.path("include"));
         exe.linkLibC();
-        examples_step.dependOn(&exe.step);
+        const install_example = b.addInstallArtifact(exe, .{});
+        examples_step.dependOn(&install_example.step);
     }
 }

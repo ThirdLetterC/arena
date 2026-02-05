@@ -255,16 +255,16 @@ While I do believe software should be open source, I don't believe it would ethi
 ---
 
 ## Usage
-Documentation for the arena allocator can all be found in `arena.h`. There is a comment at the top of the header file with quick instructions for usage for your convenience.
+Documentation for the arena allocator can all be found in `include/arena/arena.h`. There is a comment at the top of the header file with quick instructions for usage for your convenience.
 
 ### Including
 For **one file in one translation unit**, you need the following:
 ```c
 #define ARENA_IMPLEMENTATION
-#include "arena.h"
+#include <arena/arena.h>
 ```
 
-From that point, other files in other translation units can simply `#include "arena.h"` normally. There are additional macros you can define/use. See the section on [functions and macros](#functions-and-macros).
+From that point, other files in other translation units can simply `#include <arena/arena.h>` normally. There are additional macros you can define/use. See the section on [functions and macros](#functions-and-macros).
 
 ### Types
 
@@ -504,7 +504,7 @@ The tests and examples were compiled and successfully run on the following opera
 
 ### RESTRICTED UNTIL ISSUE #18 IS RESOLVED
 
-I recently cleaned up the project. Things were tested... semi-thoroughly. But I haven't re-written the tests, so while the code is production-ready, it is *not* open to any contributions aside from issue #18 until that is resolved. If you want to write the rest of the tests in `tests.c`, go for it. I'll get to it eventually...
+I recently cleaned up the project. Things were tested... semi-thoroughly. But I haven't re-written the tests, so while the code is production-ready, it is *not* open to any contributions aside from issue #18 until that is resolved. If you want to write the rest of the tests in `src/tests.c`, go for it. I'll get to it eventually...
 
 ### Basic Guidelines
 
@@ -526,9 +526,9 @@ At the moment there is no documentation for the code style, but it should be rel
 
 * If you modify `arena.h` whatsoever, you must run the tests. See the next section.
 
-* If you add a feature within `arena.h`, you must create an adequate test or tests within `tests.c`.
+* If you add a feature within `arena.h`, you must create an adequate test or tests within `src/tests.c`.
 
-* If you add a feature within `arena.h`, you must *should* an adequate example in `code_examples/` **and** add it to the `justfile`, but it is not required.
+* If you add a feature within `arena.h`, you must *should* an adequate example in `examples/` **and** add it to the `justfile`, but it is not required.
 
 ### Testing
 
@@ -536,11 +536,11 @@ This library uses [rktest](https://github.com/Warwolt/rktest) for testing.
 
 If you change `arena.h` whatsoever, **run the tests before opening a PR**. If you open a PR with modifictions to the code and the tests don't all pass, make a comment on your PR stating which test you believe is wrong and is preventing you from passing all of the tests. If any test fails and your PR doesn't have a comment that claims to correct a failed test, your PR will be ignored closed.
 
-Outside of addressing bugs and feature requests, fulfilling a feature request or bug fix for functionality within `arena.h` permits modifying or adding relevant testing code within `tests.c`, and you must do so if you want your PR to be acknowledged. There is documentation for testing code within `tests.c` at the top of the file in the form of comments.
+Outside of addressing bugs and feature requests, fulfilling a feature request or bug fix for functionality within `arena.h` permits modifying or adding relevant testing code within `src/tests.c`, and you must do so if you want your PR to be acknowledged. There is documentation for testing code within `src/tests.c` at the top of the file in the form of comments.
 
 The tests must also pass through valgrind leak-free, and `arena.h` **must** be
 C23 compliant. You should check this using the `justfile`, but if for some
-reason you can't or don't want to, compile `tests.c` with:
+reason you can't or don't want to, compile `src/tests.c` with:
 
 ```
 -std=c23 -Werror -Wall -Wextra -Wpedantic

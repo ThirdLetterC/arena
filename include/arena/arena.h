@@ -204,7 +204,7 @@ example.
 
 QUICK USAGE:
   One file in one translation unit must have the
-  following before including "arena.h", replacing
+  following before including <arena/arena.h>, replacing
   the macro values appropriately when desired.
 
         ```
@@ -230,9 +230,9 @@ QUICK USAGE:
         ```
   This evaluates to C23 alignof(type).
 
-  After doing that, you can `#include "arena.h"`
+  After doing that, you can `#include <arena/arena.h>`
   And for any other file in any other translation
-  unit in the build, you can `#include "arena.h"`
+  unit in the build, you can `#include <arena/arena.h>`
   like you normally would by itself.
 */
 
