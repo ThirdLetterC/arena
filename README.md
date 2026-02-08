@@ -454,8 +454,10 @@ and `ARENA_MEMCPY` can be assigned to alternative allocator, deallocator, and
 memcpy-like functions (or function-like macros), and `arena.h` will use them
 in place of standard library functions. You can access additional debug
 functionality for keeping track of allocations by defining `ARENA_DEBUG`.
-Finally, you can also specify a default value for allocation alignment by
-defining a value for `ARENA_DEFAULT_ALIGNMENT`. See below for examples.
+You can also enable built-in `mimalloc` integration by defining
+`ARENA_USE_MIMALLOC` (this sets default allocator macros to `mi_calloc` and
+`mi_free`). Finally, you can specify a default value for allocation alignment
+by defining a value for `ARENA_DEFAULT_ALIGNMENT`. See below for examples.
 
 ```c
 // All of these are optional
@@ -468,9 +470,25 @@ defining a value for `ARENA_DEFAULT_ALIGNMENT`. See below for examples.
 // for debug functionality:
 #define ARENA_DEBUG
 
+// Optional built-in mimalloc integration
+// (requires mimalloc headers + linking against mimalloc)
+#define ARENA_USE_MIMALLOC
+
 // If you would like to change the default alignment for
 // allocations:
 #define ARENA_DEFAULT_ALIGNMENT <alignment_value>
+```
+
+When using the zig build:
+
+```bash
+zig build test -Dmimalloc=true
+```
+
+When using the justfile:
+
+```bash
+USE_MIMALLOC=1 just test
 ```
 
 There is also a macro for determining alignment of types. It evaluates to

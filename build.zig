@@ -3,20 +3,39 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const use_mimalloc = b.option(bool, "mimalloc", "Use mimalloc for arena allocations") orelse false;
 
     const common_debug_flags: []const []const u8 =
         &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Og", "-g" };
     const common_release_flags: []const []const u8 =
         &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror" };
+    const common_debug_flags_mimalloc: []const []const u8 =
+        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Og", "-g", "-DARENA_USE_MIMALLOC" };
+    const common_release_flags_mimalloc: []const []const u8 =
+        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-DARENA_USE_MIMALLOC" };
     const common_cflags: []const []const u8 =
-        if (optimize == .Debug) common_debug_flags else common_release_flags;
+        if (optimize == .Debug)
+            if (use_mimalloc) common_debug_flags_mimalloc else common_debug_flags
+        else if (use_mimalloc)
+            common_release_flags_mimalloc
+        else
+            common_release_flags;
 
     const test_debug_flags: []const []const u8 =
         &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-Og", "-g" };
     const test_release_flags: []const []const u8 =
         &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof" };
+    const test_debug_flags_mimalloc: []const []const u8 =
+        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-Og", "-g", "-DARENA_USE_MIMALLOC" };
+    const test_release_flags_mimalloc: []const []const u8 =
+        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-DARENA_USE_MIMALLOC" };
     const test_cflags: []const []const u8 =
-        if (optimize == .Debug) test_debug_flags else test_release_flags;
+        if (optimize == .Debug)
+            if (use_mimalloc) test_debug_flags_mimalloc else test_debug_flags
+        else if (use_mimalloc)
+            test_release_flags_mimalloc
+        else
+            test_release_flags;
 
     const tests_module = b.createModule(.{
         .target = target,
@@ -33,6 +52,9 @@ pub fn build(b: *std.Build) void {
     tests_exe.addIncludePath(b.path("include"));
     tests_exe.linkLibC();
     tests_exe.linkSystemLibrary("m");
+    if (use_mimalloc) {
+        tests_exe.linkSystemLibrary("mimalloc");
+    }
     b.installArtifact(tests_exe);
 
     const tests_step = b.step("tests", "Build the test executable");
@@ -78,6 +100,9 @@ pub fn build(b: *std.Build) void {
         exe.addCSourceFile(.{ .file = b.path(source_path), .flags = common_cflags });
         exe.addIncludePath(b.path("include"));
         exe.linkLibC();
+        if (use_mimalloc) {
+            exe.linkSystemLibrary("mimalloc");
+        }
         const install_example = b.addInstallArtifact(exe, .{});
         examples_step.dependOn(&install_example.step);
     }

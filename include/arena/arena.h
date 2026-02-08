@@ -226,6 +226,10 @@ QUICK USAGE:
         // for debug functionality, you can also do:
         #define ARENA_DEBUG
 
+        // Use built-in mimalloc integration for ARENA_MALLOC
+        // and ARENA_FREE (requires linking mimalloc):
+        #define ARENA_USE_MIMALLOC
+
         // If you would like to change the default alignment for
         // allocations, you can define:
         #define ARENA_DEFAULT_ALIGNMENT <alignment_value>
@@ -452,14 +456,27 @@ void arena_delete_allocation_list(Arena *arena);
 
 #ifdef ARENA_IMPLEMENTATION
 
+#if defined(ARENA_USE_MIMALLOC) && \
+    (!defined(ARENA_MALLOC) || !defined(ARENA_FREE))
+#include <mimalloc.h>
+#endif /* ARENA_USE_MIMALLOC && default allocator macro(s) */
+
 #ifndef ARENA_MALLOC
+#ifdef ARENA_USE_MIMALLOC
+#define ARENA_MALLOC(size) mi_calloc(1u, (size))
+#else
 #include <stdlib.h>
 #define ARENA_MALLOC(size) calloc(1u, (size))
+#endif /* ARENA_USE_MIMALLOC */
 #endif /* !ARENA_MALLOC */
 
 #ifndef ARENA_FREE
+#ifdef ARENA_USE_MIMALLOC
+#define ARENA_FREE(ptr) mi_free((ptr))
+#else
 #include <stdlib.h>
 #define ARENA_FREE(ptr) free(ptr)
+#endif /* ARENA_USE_MIMALLOC */
 #endif /* !ARENA_FREE */
 
 #ifndef ARENA_MEMCPY
