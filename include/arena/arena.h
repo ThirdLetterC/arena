@@ -478,7 +478,7 @@ void arena_delete_allocation_list(Arena *arena);
 #define ckd_add(result, lhs, rhs) arena_ckd_add_size_t((result), (lhs), (rhs))
 #endif /* ARENA_HAS_STDCKDINT */
 
-#if defined(ARENA_USE_MIMALLOC) && \
+#if defined(ARENA_USE_MIMALLOC) &&                                             \
     (!defined(ARENA_MALLOC) || !defined(ARENA_FREE))
 #include <mimalloc.h>
 #endif /* ARENA_USE_MIMALLOC && default allocator macro(s) */

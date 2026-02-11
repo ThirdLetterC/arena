@@ -1,6 +1,6 @@
 set shell := ["bash", "-cu"]
 
-clang_format := env_var_or_default("CLANG_FORMAT", "clang-format-20")
+clang_format := env_var_or_default("CLANG_FORMAT", "clang-format")
 cc := env_var_or_default("CC", "cc")
 zig_global_cache_dir := env_var_or_default("ZIG_GLOBAL_CACHE_DIR", ".zig-global-cache")
 std_flags := env_var_or_default("STD_FLAGS", "-std=c2x")
