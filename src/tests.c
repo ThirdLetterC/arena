@@ -53,6 +53,31 @@ TEST(arena_alloc_aligned_tests, edge_case_tight_space) {
   arena_clear(&arena);
 }
 
+TEST(arena_alloc_aligned_tests, rejects_non_power_of_two_alignment) {
+  char region[64];
+  Arena arena;
+  arena_init(&arena, region, sizeof(region));
+
+  void *ptr = arena_alloc_aligned(&arena, 8, 6);
+
+  ASSERT_TRUE(ptr == nullptr);
+  EXPECT_LONG_EQ((long)arena.index, 0);
+  EXPECT_LONG_EQ((long)arena.allocations, 0);
+}
+
+TEST(arena_alloc_aligned_tests, rejects_overflowing_index_updates) {
+  char region[1];
+  Arena arena;
+  arena_init(&arena, region, SIZE_MAX);
+  arena.index = SIZE_MAX - 4;
+
+  void *ptr = arena_alloc_aligned(&arena, 8, 8);
+
+  ASSERT_TRUE(ptr == nullptr);
+  EXPECT_TRUE(arena.index == SIZE_MAX - 4);
+  EXPECT_LONG_EQ((long)arena.allocations, 0);
+}
+
 TEST(arena_copy_tests, clamps_source_index_to_source_size) {
   char src_region[8] = {1, 2, 3, 4, 5, 6, 7, 8};
   char dest_region[64];

@@ -136,3 +136,18 @@ void usage_example() {
 
 * **File Naming:** Use lowercase with underscores (e.g., `modem_manager.c`).
 * **Vendor Code:** Isolate third-party/vendor code in a separate directory and do not modify it directly.
+
+---
+
+## 9. Security & Hardening Best Practices
+
+* **Threat Model First:** Document trust boundaries, attacker capabilities, and protected assets for each module.
+* **Input Validation:** Treat all external data as untrusted; validate length, range, and encoding before parsing.
+* **Bounds Safety:** Check every index and pointer offset against buffer sizes. No unchecked pointer arithmetic.
+* **Checked Arithmetic:** Use C23 checked integer APIs (`<stdckdint.h>`, `ckd_add`, `ckd_sub`, `ckd_mul`) for size and offset math that may overflow.
+* **Safe Buffer Operations:** Use `memcpy`/`memmove` only with verified bounds; keep explicit length tracking for every mutable buffer.
+* **Initialization Discipline:** Zero-initialize state before use, and reset invalidated pointers to `nullptr` in long-lived objects.
+* **Secrets Hygiene:** Never log secrets or key material. Clear secret buffers before release using a non-optimized wipe routine supported by the target platform.
+* **Fail Securely:** On validation/auth failure, return an error and avoid partial state updates.
+* **Toolchain Hardening:** Enable hardening flags where available (`-fstack-protector-strong`, `-D_FORTIFY_SOURCE=3`, `-fPIE/-pie`, `-Wl,-z,relro,-z,now`).
+* **Security Testing:** Combine sanitizers with fuzzing on parsers, decoders, and state transition logic; add regression tests for each discovered bug class.

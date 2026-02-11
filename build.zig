@@ -6,13 +6,13 @@ pub fn build(b: *std.Build) void {
     const use_mimalloc = b.option(bool, "mimalloc", "Use mimalloc for arena allocations") orelse false;
 
     const common_debug_flags: []const []const u8 =
-        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Og", "-g" };
+        &[_][]const u8{ "-std=c23", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-fPIE", "-Og", "-g" };
     const common_release_flags: []const []const u8 =
-        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror" };
+        &[_][]const u8{ "-std=c23", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-fPIE" };
     const common_debug_flags_mimalloc: []const []const u8 =
-        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Og", "-g", "-DARENA_USE_MIMALLOC" };
+        &[_][]const u8{ "-std=c23", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-fPIE", "-Og", "-g", "-DARENA_USE_MIMALLOC" };
     const common_release_flags_mimalloc: []const []const u8 =
-        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-DARENA_USE_MIMALLOC" };
+        &[_][]const u8{ "-std=c23", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-fPIE", "-DARENA_USE_MIMALLOC" };
     const common_cflags: []const []const u8 =
         if (optimize == .Debug)
             if (use_mimalloc) common_debug_flags_mimalloc else common_debug_flags
@@ -22,13 +22,13 @@ pub fn build(b: *std.Build) void {
             common_release_flags;
 
     const test_debug_flags: []const []const u8 =
-        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-Og", "-g" };
+        &[_][]const u8{ "-std=c23", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-fPIE", "-Og", "-g" };
     const test_release_flags: []const []const u8 =
-        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof" };
+        &[_][]const u8{ "-std=c23", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-fPIE" };
     const test_debug_flags_mimalloc: []const []const u8 =
-        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-Og", "-g", "-DARENA_USE_MIMALLOC" };
+        &[_][]const u8{ "-std=c23", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-fPIE", "-Og", "-g", "-DARENA_USE_MIMALLOC" };
     const test_release_flags_mimalloc: []const []const u8 =
-        &[_][]const u8{ "-std=c2x", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-DARENA_USE_MIMALLOC" };
+        &[_][]const u8{ "-std=c23", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-Wno-newline-eof", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=3", "-fPIE", "-DARENA_USE_MIMALLOC" };
     const test_cflags: []const []const u8 =
         if (optimize == .Debug)
             if (use_mimalloc) test_debug_flags_mimalloc else test_debug_flags
@@ -41,11 +41,17 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
+        .stack_protector = true,
+        .pic = true,
     });
+    if (optimize == .Debug) {
+        tests_module.sanitize_c = .full;
+    }
     const tests_exe = b.addExecutable(.{
         .name = "test",
         .root_module = tests_module,
     });
+    tests_exe.pie = true;
     tests_exe.addCSourceFile(.{ .file = b.path("src/tests.c"), .flags = test_cflags });
     tests_exe.addCSourceFile(.{ .file = b.path("src/rktest.c"), .flags = test_cflags });
     tests_exe.addCSourceFile(.{ .file = b.path("src/arena.c"), .flags = test_cflags });
@@ -91,11 +97,17 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .link_libc = true,
+            .stack_protector = true,
+            .pic = true,
         });
+        if (optimize == .Debug) {
+            example_module.sanitize_c = .full;
+        }
         const exe = b.addExecutable(.{
             .name = stem,
             .root_module = example_module,
         });
+        exe.pie = true;
         const source_path = b.fmt("examples/{s}", .{entry.name});
         exe.addCSourceFile(.{ .file = b.path(source_path), .flags = common_cflags });
         exe.addIncludePath(b.path("include"));

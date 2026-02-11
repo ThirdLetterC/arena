@@ -60,4 +60,5 @@ gdb.txt
 .idea/
 
 .zig-cache/
+.zig-global-cache/
 zig-out/

@@ -569,11 +569,20 @@ C23 compliant. You should check this using the `justfile`, but if for some
 reason you can't or don't want to, compile `src/tests.c` with:
 
 ```
--std=c23 -Werror -Wall -Wextra -Wpedantic
+-std=c23 -Werror -Wall -Wextra -Wpedantic \
+-fstack-protector-strong -D_FORTIFY_SOURCE=3 -fPIE \
+-fsanitize=address,undefined,leak
 ```
+
+If your compiler still uses the draft flag name, replace `-std=c23` with
+`-std=c2x`.
 
 As noted above, you can do all of this with the `justfile`:
 
 ```
+$ just tests
 $ just test
 ```
+
+`just tests` keeps sanitizers enabled (default). `just test` rebuilds with
+`USE_SANITIZERS=0` before running valgrind.

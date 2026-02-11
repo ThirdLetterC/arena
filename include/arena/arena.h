@@ -456,6 +456,28 @@ void arena_delete_allocation_list(Arena *arena);
 
 #ifdef ARENA_IMPLEMENTATION
 
+#if defined(__has_include)
+#if __has_include(<stdckdint.h>)
+#include <stdckdint.h>
+#define ARENA_HAS_STDCKDINT 1
+#endif
+#endif
+
+#ifndef ARENA_HAS_STDCKDINT
+[[nodiscard]] static bool arena_ckd_add_size_t(size_t *result, size_t lhs,
+                                               size_t rhs) {
+  if (result == nullptr) {
+    return true;
+  }
+  if (lhs > (SIZE_MAX - rhs)) {
+    return true;
+  }
+  *result = lhs + rhs;
+  return false;
+}
+#define ckd_add(result, lhs, rhs) arena_ckd_add_size_t((result), (lhs), (rhs))
+#endif /* ARENA_HAS_STDCKDINT */
+
 #if defined(ARENA_USE_MIMALLOC) && \
     (!defined(ARENA_MALLOC) || !defined(ARENA_FREE))
 #include <mimalloc.h>
@@ -546,29 +568,38 @@ void *arena_alloc_aligned(Arena *arena, size_t size, size_t alignment) {
     return nullptr;
   }
 
+  size_t aligned_index = arena->index;
+
   if (alignment != 0) {
-    const uintptr_t current =
-        (uintptr_t)arena->region + (uintptr_t)arena->index;
-    const size_t misalignment = (size_t)(current % alignment);
-    if (misalignment != 0) {
-      const size_t padding = alignment - misalignment;
-      if (padding > arena->size - arena->index) {
-        return nullptr;
-      }
-      arena->index += padding;
+    if ((alignment & (alignment - 1)) != 0) {
+      return nullptr;
     }
+
+    const size_t alignment_mask = alignment - 1;
+    size_t padded_index = 0;
+    if (ckd_add(&padded_index, aligned_index, alignment_mask)) {
+      return nullptr;
+    }
+
+    aligned_index = padded_index & ~alignment_mask;
   }
 
-  if (size > arena->size - arena->index) {
+  size_t end_index = 0;
+  if (ckd_add(&end_index, aligned_index, size)) {
     return nullptr;
   }
+  if (end_index > arena->size) {
+    return nullptr;
+  }
+
+  arena->index = aligned_index;
 
 #ifdef ARENA_DEBUG
   arena_add_allocation(arena, size);
 #endif /* ARENA_DEBUG */
 
-  arena->index += size;
-  return arena->region + (arena->index - size);
+  arena->index = end_index;
+  return arena->region + aligned_index;
 }
 
 size_t arena_copy(Arena *dest, Arena *src) {
