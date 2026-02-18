@@ -155,8 +155,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#ifndef RKTEST_H
-#define RKTEST_H
+#pragma once
 
 /* Public API --------------------------------------------------------------- */
 int rktest_main(int argc, const char *argv[]);
@@ -1373,8 +1372,6 @@ int rktest_main(int argc, const char *argv[]) {
 }
 
 #endif /* DEFINE_RKTEST_IMPLEMENTATION */
-
-#endif /* RKTEST_H */
 
 /*
 ------------------------------------------------------------------------------
