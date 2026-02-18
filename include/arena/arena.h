@@ -248,8 +248,7 @@ QUICK USAGE:
   like you normally would by itself.
 */
 
-#ifndef ARENA_H
-#define ARENA_H
+#pragma once
 
 #include <stdalign.h>
 #include <stddef.h>
@@ -716,5 +715,3 @@ void arena_delete_allocation_list(Arena *arena) {
 #endif /* ARENA_DEBUG */
 
 #endif /* ARENA_IMPLEMENTATION */
-
-#endif /* ARENA_H */
