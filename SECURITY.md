@@ -31,16 +31,21 @@ Defensive posture:
 - `arena_destroy` frees debug metadata first, then only frees memory explicitly owned by the arena.
 - `arena_init` produces a non-owning arena; `arena_create` produces an owning arena.
 - Default allocation path uses zero-initializing `calloc` for arena objects and regions (or mimalloc `mi_calloc` when enabled).
+- Optional secure wipe hooks are available for sensitive-memory use cases:
+  - `ARENA_SECURE_WIPE(ptr, size)` allows platform/application-specific wipe primitives.
+  - `ARENA_SECURE_WIPE_ON_CLEAR` wipes active bytes before cursor reset.
+  - `ARENA_SECURE_WIPE_ON_DESTROY` wipes owned regions before release.
 - Public APIs return explicit failure values (`nullptr`/`0`) instead of partial-success semantics.
 
 Limitations and caller responsibilities:
 - This library is not thread-safe; callers must synchronize shared arenas.
-- This library does not provide secret zeroization on clear/destroy; callers handling secrets must wipe sensitive buffers before release.
+- Sensitive-data zeroization is opt-in; define `ARENA_SECURE_WIPE_ON_CLEAR` and/or
+  `ARENA_SECURE_WIPE_ON_DESTROY` (and optionally `ARENA_SECURE_WIPE`) when secrets may reside in arena memory.
 - Pointer provenance/lifetime remains a caller contract; passing invalid or stale arena/region pointers is out of scope.
 - Overrunning returned arena slices is a caller bug and can still violate memory safety.
 
 Build hardening:
-- Build defaults enforce `-std=c23 -Wall -Wextra -Wpedantic -Werror`.
+- Build defaults enforce C23/C2x mode with `-Wall -Wextra -Wpedantic -Werror`.
 - Hardened builds include stack and libc hardening flags (`-fstack-protector-strong`, `-D_FORTIFY_SOURCE=3`, `-fPIE`, and PIE linking).
 - Link hardening in the `justfile` includes RELRO/now (`-Wl,-z,relro,-z,now -pie`).
 - Debug/test workflows support sanitizers (`-fsanitize=address,undefined,leak`) and stack traces (`-fno-omit-frame-pointer`).

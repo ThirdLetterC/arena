@@ -1,6 +1,8 @@
 #include "rktest/rktest.h"
 
 #define ARENA_DEBUG
+#define ARENA_SECURE_WIPE_ON_CLEAR
+#define ARENA_SECURE_WIPE_ON_DESTROY
 #include "arena/arena.h"
 
 TEST(arena_init_tests, init) {
@@ -85,6 +87,17 @@ TEST(arena_alloc_tests, rejects_out_of_bounds_index) {
   ASSERT_TRUE(bytes == nullptr);
   EXPECT_LONG_EQ((long)arena.index, (long)sizeof(region) + 1);
   EXPECT_LONG_EQ((long)arena.allocations, 0);
+}
+
+TEST(arena_alloc_tests, rejects_null_arena) {
+  EXPECT_TRUE(arena_alloc(nullptr, 8) == nullptr);
+  EXPECT_TRUE(arena_alloc_aligned(nullptr, 8, 8) == nullptr);
+}
+
+TEST(arena_alloc_tests, rejects_arena_without_region) {
+  Arena arena = {.region = nullptr, .index = 0, .size = 32};
+  EXPECT_TRUE(arena_alloc(&arena, 8) == nullptr);
+  EXPECT_TRUE(arena_alloc_aligned(&arena, 8, 8) == nullptr);
 }
 
 TEST(arena_alloc_aligned_tests, edge_case_tight_space) {
@@ -225,8 +238,8 @@ TEST(arena_copy_tests, truncates_to_destination_capacity_and_copies_bytes) {
 }
 
 TEST(arena_copy_tests, handles_overlapping_regions_safely) {
-  unsigned char shared_region[16] = {
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+  unsigned char shared_region[16] = {0, 1, 2,  3,  4,  5,  6,  7,
+                                     8, 9, 10, 11, 12, 13, 14, 15};
   Arena src;
   Arena dest;
 
@@ -341,4 +354,29 @@ TEST(arena_destroy_tests,
   EXPECT_TRUE(arena.owns_self == false);
   EXPECT_TRUE(arena.owns_region == false);
   EXPECT_EQ((int)(unsigned char)region[0], 0x5A);
+}
+
+TEST(arena_security_tests, clear_securely_wipes_active_bytes) {
+  unsigned char region[32];
+  for (size_t i = 0; i < sizeof(region); ++i) {
+    region[i] = 0xA5;
+  }
+
+  Arena arena;
+  arena_init(&arena, region, sizeof(region));
+
+  auto ptr = arena_alloc(&arena, 8);
+  ASSERT_TRUE(ptr != nullptr);
+  auto allocation = arena_get_allocation_struct(&arena, ptr);
+  ASSERT_TRUE(allocation != nullptr);
+  const size_t start = allocation->index;
+  for (size_t i = 0; i < 8; ++i) {
+    ((unsigned char *)ptr)[i] = 0x5A;
+  }
+
+  arena_clear(&arena);
+
+  for (size_t i = 0; i < 8; ++i) {
+    EXPECT_EQ((int)region[start + i], 0);
+  }
 }

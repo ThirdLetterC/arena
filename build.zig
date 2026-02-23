@@ -52,6 +52,8 @@ pub fn build(b: *std.Build) void {
         .root_module = tests_module,
     });
     tests_exe.pie = true;
+    tests_exe.link_z_relro = true;
+    tests_exe.link_z_lazy = false;
     tests_exe.addCSourceFile(.{ .file = b.path("testing/tests.c"), .flags = test_cflags });
     tests_exe.addCSourceFile(.{ .file = b.path("src/rktest.c"), .flags = test_cflags });
     tests_exe.addCSourceFile(.{ .file = b.path("src/arena.c"), .flags = test_cflags });
@@ -108,6 +110,8 @@ pub fn build(b: *std.Build) void {
             .root_module = example_module,
         });
         exe.pie = true;
+        exe.link_z_relro = true;
+        exe.link_z_lazy = false;
         const source_path = b.fmt("examples/{s}", .{entry.name});
         exe.addCSourceFile(.{ .file = b.path(source_path), .flags = common_cflags });
         exe.addIncludePath(b.path("include"));

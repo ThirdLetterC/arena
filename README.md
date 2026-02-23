@@ -457,7 +457,13 @@ functionality for keeping track of allocations by defining `ARENA_DEBUG`.
 You can also enable built-in `mimalloc` integration by defining
 `ARENA_USE_MIMALLOC` (this sets default allocator macros to `mi_calloc` and
 `mi_free`). Finally, you can specify a default value for allocation alignment
-by defining a value for `ARENA_DEFAULT_ALIGNMENT`. See below for examples.
+by defining a value for `ARENA_DEFAULT_ALIGNMENT`.
+
+For sensitive-memory workflows, you can provide your own wipe function via
+`ARENA_SECURE_WIPE(ptr, size)` and opt into secure wiping before clear/destroy
+using `ARENA_SECURE_WIPE_ON_CLEAR` and `ARENA_SECURE_WIPE_ON_DESTROY`.
+If `ARENA_SECURE_WIPE` is not provided, a fallback volatile-byte wipe is used.
+See below for examples.
 
 ```c
 // All of these are optional
@@ -478,6 +484,11 @@ by defining a value for `ARENA_DEFAULT_ALIGNMENT`. See below for examples.
 // If you would like to change the default alignment for
 // allocations:
 #define ARENA_DEFAULT_ALIGNMENT <alignment_value>
+
+// Optional secure wipe integration for sensitive buffers:
+#define ARENA_SECURE_WIPE(ptr, size)
+#define ARENA_SECURE_WIPE_ON_CLEAR
+#define ARENA_SECURE_WIPE_ON_DESTROY
 ```
 
 When using the zig build:

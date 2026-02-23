@@ -234,6 +234,11 @@ QUICK USAGE:
         // If you would like to change the default alignment for
         // allocations, you can define:
         #define ARENA_DEFAULT_ALIGNMENT <alignment_value>
+
+        // Optional secure wipe hooks for sensitive data handling:
+        #define ARENA_SECURE_WIPE(ptr, size)
+        #define ARENA_SECURE_WIPE_ON_CLEAR
+        #define ARENA_SECURE_WIPE_ON_DESTROY
         ```
 
   There is also a macro for determining the
@@ -281,7 +286,8 @@ typedef struct {
   char *region;
   size_t index;
   size_t size;
-  /* Ownership bits: arena_create() sets both to true, arena_init() sets both false. */
+  /* Ownership bits: arena_create() sets both to true, arena_init() sets both
+   * false. */
   bool owns_region;
   bool owns_self;
 
@@ -483,9 +489,8 @@ void arena_delete_allocation_list(Arena *arena);
   return false;
 }
 
-[[nodiscard]] static bool arena_ckd_add_uintptr_t(uintptr_t *result,
-                                                  uintptr_t lhs,
-                                                  uintptr_t rhs) {
+[[nodiscard]] static bool
+arena_ckd_add_uintptr_t(uintptr_t *result, uintptr_t lhs, uintptr_t rhs) {
   if (result == nullptr) {
     return true;
   }
@@ -529,6 +534,26 @@ void arena_delete_allocation_list(Arena *arena);
 #include <string.h>
 #define ARENA_MEMMOVE(dest, src, size) memmove((dest), (src), (size))
 #endif /* !ARENA_MEMMOVE */
+
+#ifndef ARENA_SECURE_WIPE
+#if defined(__STDC_LIB_EXT1__)
+#include <string.h>
+#define ARENA_SECURE_WIPE(ptr, size) ((void)memset_s((ptr), (size), 0, (size)))
+#else
+[[maybe_unused]] static void arena_secure_wipe_fallback(void *ptr,
+                                                        size_t size) {
+  if (ptr == nullptr || size == 0) {
+    return;
+  }
+
+  volatile unsigned char *bytes = (volatile unsigned char *)ptr;
+  for (size_t i = 0; i < size; ++i) {
+    bytes[i] = 0u;
+  }
+}
+#define ARENA_SECURE_WIPE(ptr, size) arena_secure_wipe_fallback((ptr), (size))
+#endif /* __STDC_LIB_EXT1__ */
+#endif /* !ARENA_SECURE_WIPE */
 
 void arena_init(Arena *arena, void *region, size_t size) {
   if (arena == nullptr) {
@@ -600,11 +625,18 @@ void *arena_alloc_aligned(Arena *arena, size_t size, size_t alignment) {
     return nullptr;
   }
 
+#if SIZE_MAX > UINTPTR_MAX
+  if (alignment > (size_t)UINTPTR_MAX || arena->index > (size_t)UINTPTR_MAX) {
+    return nullptr;
+  }
+#endif
+
   const uintptr_t base_addr = (uintptr_t)arena->region;
   const uintptr_t alignment_mask = (uintptr_t)alignment - 1u;
 
   uintptr_t start_addr = 0;
-  if (arena_ckd_add_uintptr_t(&start_addr, base_addr, (uintptr_t)arena->index)) {
+  if (arena_ckd_add_uintptr_t(&start_addr, base_addr,
+                              (uintptr_t)arena->index)) {
     return nullptr;
   }
 
@@ -669,6 +701,17 @@ void arena_clear(Arena *arena) {
     return;
   }
 
+#ifdef ARENA_SECURE_WIPE_ON_CLEAR
+  size_t wipe_bytes = arena->index;
+  if (wipe_bytes > arena->size) {
+    wipe_bytes = arena->size;
+  }
+
+  if (arena->region != nullptr && wipe_bytes != 0) {
+    ARENA_SECURE_WIPE(arena->region, wipe_bytes);
+  }
+#endif /* ARENA_SECURE_WIPE_ON_CLEAR */
+
   arena->index = 0;
 
 #ifdef ARENA_DEBUG
@@ -684,6 +727,12 @@ void arena_destroy(Arena *arena) {
 #ifdef ARENA_DEBUG
   arena_delete_allocation_list(arena);
 #endif /* ARENA_DEBUG */
+
+#ifdef ARENA_SECURE_WIPE_ON_DESTROY
+  if (arena->owns_region && arena->region != nullptr && arena->size != 0) {
+    ARENA_SECURE_WIPE(arena->region, arena->size);
+  }
+#endif /* ARENA_SECURE_WIPE_ON_DESTROY */
 
   if (arena->owns_region && arena->region != nullptr) {
     ARENA_FREE(arena->region);
