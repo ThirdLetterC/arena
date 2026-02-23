@@ -122,6 +122,23 @@ TEST(arena_alloc_aligned_tests, respects_requested_alignment) {
   arena_clear(&arena);
 }
 
+TEST(arena_alloc_aligned_tests, aligns_against_absolute_pointer_address) {
+  char raw_region[96];
+  Arena arena;
+  arena_init(&arena, raw_region + 1, sizeof(raw_region) - 1);
+
+  void *ptr = arena_alloc_aligned(&arena, 8, 16);
+
+  ASSERT_TRUE(ptr != nullptr);
+  EXPECT_TRUE((((uintptr_t)ptr) & (uintptr_t)(16 - 1)) == 0u);
+  EXPECT_TRUE((char *)ptr >= arena.region);
+  EXPECT_TRUE(((char *)ptr + 8) <= (arena.region + arena.size));
+  EXPECT_TRUE(arena.index >= 8);
+  EXPECT_TRUE(arena.index <= arena.size);
+  EXPECT_LONG_EQ((long)arena.allocations, 1);
+  arena_clear(&arena);
+}
+
 TEST(arena_alloc_aligned_tests, rejects_zero_alignment) {
   char region[64];
   Arena arena;
@@ -207,6 +224,31 @@ TEST(arena_copy_tests, truncates_to_destination_capacity_and_copies_bytes) {
   EXPECT_EQ((int)(unsigned char)dest_region[4], 5);
 }
 
+TEST(arena_copy_tests, handles_overlapping_regions_safely) {
+  unsigned char shared_region[16] = {
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+  Arena src;
+  Arena dest;
+
+  arena_init(&src, shared_region, 8);
+  arena_init(&dest, shared_region + 2, 8);
+  src.index = 8;
+
+  const size_t bytes_copied = arena_copy(&dest, &src);
+  EXPECT_LONG_EQ((long)bytes_copied, 8);
+  EXPECT_LONG_EQ((long)dest.index, 8);
+  EXPECT_EQ((int)shared_region[0], 0);
+  EXPECT_EQ((int)shared_region[1], 1);
+  EXPECT_EQ((int)shared_region[2], 0);
+  EXPECT_EQ((int)shared_region[3], 1);
+  EXPECT_EQ((int)shared_region[4], 2);
+  EXPECT_EQ((int)shared_region[5], 3);
+  EXPECT_EQ((int)shared_region[6], 4);
+  EXPECT_EQ((int)shared_region[7], 5);
+  EXPECT_EQ((int)shared_region[8], 6);
+  EXPECT_EQ((int)shared_region[9], 7);
+}
+
 TEST(arena_copy_tests, returns_zero_for_invalid_inputs) {
   char src_region[8] = {0};
   char dest_region[8] = {0};
@@ -278,4 +320,25 @@ TEST(arena_debug_tests, clear_resets_index_and_allocation_list) {
   EXPECT_LONG_EQ((long)arena.index, 0);
   EXPECT_LONG_EQ((long)arena.allocations, 0);
   EXPECT_TRUE(arena.head_allocation == nullptr);
+}
+
+TEST(arena_destroy_tests,
+     non_owning_destroy_resets_state_without_freeing_external_region) {
+  char region[32] = {0x5A};
+  Arena arena;
+  arena_init(&arena, region, sizeof(region));
+
+  auto allocation = arena_alloc(&arena, 8);
+  ASSERT_TRUE(allocation != nullptr);
+  EXPECT_TRUE(arena.owns_self == false);
+  EXPECT_TRUE(arena.owns_region == false);
+
+  arena_destroy(&arena);
+
+  EXPECT_TRUE(arena.region == nullptr);
+  EXPECT_LONG_EQ((long)arena.index, 0);
+  EXPECT_LONG_EQ((long)arena.size, 0);
+  EXPECT_TRUE(arena.owns_self == false);
+  EXPECT_TRUE(arena.owns_region == false);
+  EXPECT_EQ((int)(unsigned char)region[0], 0x5A);
 }

@@ -222,6 +222,7 @@ QUICK USAGE:
         #define ARENA_MALLOC <stdlib_malloc_like_allocator>
         #define ARENA_FREE <stdlib_free_like_deallocator>
         #define ARENA_MEMCPY <stdlib_memcpy_like_copier>
+        #define ARENA_MEMMOVE <stdlib_memmove_like_mover>
 
         // for debug functionality, you can also do:
         #define ARENA_DEBUG
@@ -280,6 +281,9 @@ typedef struct {
   char *region;
   size_t index;
   size_t size;
+  /* Ownership bits: arena_create() sets both to true, arena_init() sets both false. */
+  bool owns_region;
+  bool owns_self;
 
 #ifdef ARENA_DEBUG
   size_t allocations;
@@ -403,7 +407,7 @@ Parameters:
 void arena_clear(Arena *arena);
 
 /*
-Free the memory allocated for the entire arena region.
+Destroy an arena and release any owned resources.
 
 Parameters:
   Arena *arena    |    The arena to be destroyed.
@@ -462,7 +466,11 @@ void arena_delete_allocation_list(Arena *arena);
 #endif
 #endif
 
-#ifndef ARENA_HAS_STDCKDINT
+#ifdef ARENA_HAS_STDCKDINT
+#define arena_ckd_add_size_t(result, lhs, rhs) ckd_add((result), (lhs), (rhs))
+#define arena_ckd_add_uintptr_t(result, lhs, rhs)                              \
+  ckd_add((result), (lhs), (rhs))
+#else
 [[nodiscard]] static bool arena_ckd_add_size_t(size_t *result, size_t lhs,
                                                size_t rhs) {
   if (result == nullptr) {
@@ -474,7 +482,19 @@ void arena_delete_allocation_list(Arena *arena);
   *result = lhs + rhs;
   return false;
 }
-#define ckd_add(result, lhs, rhs) arena_ckd_add_size_t((result), (lhs), (rhs))
+
+[[nodiscard]] static bool arena_ckd_add_uintptr_t(uintptr_t *result,
+                                                  uintptr_t lhs,
+                                                  uintptr_t rhs) {
+  if (result == nullptr) {
+    return true;
+  }
+  if (lhs > (UINTPTR_MAX - rhs)) {
+    return true;
+  }
+  *result = lhs + rhs;
+  return false;
+}
 #endif /* ARENA_HAS_STDCKDINT */
 
 #if defined(ARENA_USE_MIMALLOC) &&                                             \
@@ -505,6 +525,11 @@ void arena_delete_allocation_list(Arena *arena);
 #define ARENA_MEMCPY(dest, src, size) memcpy((dest), (src), (size))
 #endif /* !ARENA_MEMCPY */
 
+#ifndef ARENA_MEMMOVE
+#include <string.h>
+#define ARENA_MEMMOVE(dest, src, size) memmove((dest), (src), (size))
+#endif /* !ARENA_MEMMOVE */
+
 void arena_init(Arena *arena, void *region, size_t size) {
   if (arena == nullptr) {
     return;
@@ -519,6 +544,8 @@ void arena_init(Arena *arena, void *region, size_t size) {
   arena->region = (char *)region;
   arena->index = 0;
   arena->size = size;
+  arena->owns_region = false;
+  arena->owns_self = false;
 
 #ifdef ARENA_DEBUG
   arena->allocations = 0;
@@ -542,6 +569,8 @@ Arena *arena_create(size_t size) {
   }
 
   arena_init(arena, region, size);
+  arena->owns_region = true;
+  arena->owns_self = true;
 
   return arena;
 
@@ -567,22 +596,36 @@ void *arena_alloc_aligned(Arena *arena, size_t size, size_t alignment) {
     return nullptr;
   }
 
-  size_t aligned_index = arena->index;
-
   if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
     return nullptr;
   }
 
-  const size_t alignment_mask = alignment - 1;
-  size_t padded_index = 0;
-  if (ckd_add(&padded_index, aligned_index, alignment_mask)) {
+  const uintptr_t base_addr = (uintptr_t)arena->region;
+  const uintptr_t alignment_mask = (uintptr_t)alignment - 1u;
+
+  uintptr_t start_addr = 0;
+  if (arena_ckd_add_uintptr_t(&start_addr, base_addr, (uintptr_t)arena->index)) {
     return nullptr;
   }
 
-  aligned_index = padded_index & ~alignment_mask;
+  uintptr_t padded_addr = 0;
+  if (arena_ckd_add_uintptr_t(&padded_addr, start_addr, alignment_mask)) {
+    return nullptr;
+  }
+
+  const uintptr_t aligned_addr = padded_addr & ~alignment_mask;
+  if (aligned_addr < base_addr) {
+    return nullptr;
+  }
+
+  const uintptr_t aligned_offset = aligned_addr - base_addr;
+  if (aligned_offset > (uintptr_t)SIZE_MAX) {
+    return nullptr;
+  }
+  const size_t aligned_index = (size_t)aligned_offset;
 
   size_t end_index = 0;
-  if (ckd_add(&end_index, aligned_index, size)) {
+  if (arena_ckd_add_size_t(&end_index, aligned_index, size)) {
     return nullptr;
   }
   if (end_index > arena->size) {
@@ -614,7 +657,7 @@ size_t arena_copy(Arena *dest, Arena *src) {
   bytes = (src_bytes < dest->size) ? src_bytes : dest->size;
 
   if (bytes != 0) {
-    ARENA_MEMCPY(dest->region, src->region, bytes);
+    ARENA_MEMMOVE(dest->region, src->region, bytes);
   }
   dest->index = bytes;
 
@@ -642,11 +685,20 @@ void arena_destroy(Arena *arena) {
   arena_delete_allocation_list(arena);
 #endif /* ARENA_DEBUG */
 
-  if (arena->region != nullptr) {
+  if (arena->owns_region && arena->region != nullptr) {
     ARENA_FREE(arena->region);
   }
 
-  ARENA_FREE(arena);
+  if (arena->owns_self) {
+    ARENA_FREE(arena);
+    return;
+  }
+
+  arena->region = nullptr;
+  arena->index = 0;
+  arena->size = 0;
+  arena->owns_region = false;
+  arena->owns_self = false;
 }
 
 #ifdef ARENA_DEBUG
@@ -672,6 +724,11 @@ void arena_add_allocation(Arena *arena, size_t size) {
     return;
   }
 
+  size_t next_allocations = 0;
+  if (arena_ckd_add_size_t(&next_allocations, arena->allocations, 1u)) {
+    return;
+  }
+
   Arena_Allocation *node = ARENA_MALLOC(sizeof(Arena_Allocation));
   if (node == nullptr) {
     return;
@@ -692,7 +749,7 @@ void arena_add_allocation(Arena *arena, size_t size) {
     current->next = node;
   }
 
-  arena->allocations += 1;
+  arena->allocations = next_allocations;
 }
 
 void arena_delete_allocation_list(Arena *arena) {

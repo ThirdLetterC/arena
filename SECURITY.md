@@ -3,7 +3,7 @@
 Trust boundaries:
 - All inputs to the public API (`Arena*`, region pointers, sizes, alignments) are untrusted until validated by the caller and/or this library's parameter checks.
 - Any size/alignment values derived from external data remain attacker-controlled at the call site.
-- Custom allocator/copy hooks (`ARENA_MALLOC`, `ARENA_FREE`, `ARENA_MEMCPY`) are part of the trusted computing base when overridden.
+- Custom allocator/copy hooks (`ARENA_MALLOC`, `ARENA_FREE`, `ARENA_MEMCPY`, `ARENA_MEMMOVE`) are part of the trusted computing base when overridden.
 
 Attacker model:
 - An attacker can influence allocation sizes, alignment values, and allocation cadence through application-level inputs.
@@ -21,14 +21,15 @@ Defensive posture:
 - Creation fails closed: `arena_create(0)` returns `nullptr`; allocation failures return `nullptr` and clean up partial state.
 - Allocation APIs fail closed: `arena_alloc_aligned` rejects zero-sized requests, null arena/region pointers, and invalid `index > size` state.
 - Alignment validation enforces power-of-two constraints and rejects invalid alignments.
-- Index and end-offset math use checked addition (`ckd_add` from `<stdckdint.h>` when available, with a local overflow-checked fallback otherwise).
+- Index, address, and end-offset math use checked addition (`ckd_add` from `<stdckdint.h>` when available, with local overflow-checked fallbacks otherwise).
 - Allocation bounds are enforced before pointer return (`end_index <= arena->size`).
 - Failed allocation attempts do not advance `arena->index`.
 - Copy operations validate arena pointers/regions and clamp byte count to `min(dest->size, min(src->index, src->size))`.
-- Copy skips `memcpy` on zero bytes, avoiding undefined zero-length edge misuse with null regions.
+- Copy uses `memmove` semantics for overlap safety and skips data movement on zero bytes.
 - Debug allocation tracking (`ARENA_DEBUG`) is optional and best-effort; metadata allocation failure does not corrupt arena state.
 - `arena_clear` resets allocation cursor and frees debug tracking nodes when enabled.
-- `arena_destroy` frees debug metadata first, then region, then arena object.
+- `arena_destroy` frees debug metadata first, then only frees memory explicitly owned by the arena.
+- `arena_init` produces a non-owning arena; `arena_create` produces an owning arena.
 - Default allocation path uses zero-initializing `calloc` for arena objects and regions (or mimalloc `mi_calloc` when enabled).
 - Public APIs return explicit failure values (`nullptr`/`0`) instead of partial-success semantics.
 

@@ -400,7 +400,7 @@ ARENA_INLINE void arena_clear(Arena* arena);
 
 
 /*
-Free the memory allocated for the entire arena region.
+Destroy an arena and release any owned resources.
 
 Parameters:
   Arena *arena    |    The arena to be destroyed.
@@ -449,10 +449,10 @@ Parameters:
 void arena_delete_allocation_list(Arena *arena);
 ```
 
-In your code, you can define some optional macros. `ARENA_MALLOC`, `ARENA_FREE`
-and `ARENA_MEMCPY` can be assigned to alternative allocator, deallocator, and
-memcpy-like functions (or function-like macros), and `arena.h` will use them
-in place of standard library functions. You can access additional debug
+In your code, you can define some optional macros. `ARENA_MALLOC`, `ARENA_FREE`,
+`ARENA_MEMCPY`, and `ARENA_MEMMOVE` can be assigned to alternative allocator,
+deallocator, memcpy-like, and memmove-like functions (or function-like macros),
+and `arena.h` will use them in place of standard library functions. You can access additional debug
 functionality for keeping track of allocations by defining `ARENA_DEBUG`.
 You can also enable built-in `mimalloc` integration by defining
 `ARENA_USE_MIMALLOC` (this sets default allocator macros to `mi_calloc` and
@@ -466,6 +466,7 @@ by defining a value for `ARENA_DEFAULT_ALIGNMENT`. See below for examples.
 #define ARENA_MALLOC <stdlib_malloc_like_allocator>
 #define ARENA_FREE <stdlib_free_like_deallocator>
 #define ARENA_MEMCPY <stdlib_memcpy_like_copier>
+#define ARENA_MEMMOVE <stdlib_memmove_like_mover>
 
 // for debug functionality:
 #define ARENA_DEBUG
