@@ -151,11 +151,11 @@
 //      --rktest_print_filenames=0
 //        Disable printing out the filename of a test case on assert failure.
 
+#pragma once
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
-
-#pragma once
 
 /* Public API --------------------------------------------------------------- */
 int rktest_main(int argc, const char *argv[]);
