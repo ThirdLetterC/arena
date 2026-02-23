@@ -53,6 +53,18 @@ TEST(arena_alloc_aligned_tests, edge_case_tight_space) {
   arena_clear(&arena);
 }
 
+TEST(arena_alloc_aligned_tests, rejects_zero_alignment) {
+  char region[64];
+  Arena arena;
+  arena_init(&arena, region, sizeof(region));
+
+  void *ptr = arena_alloc_aligned(&arena, 8, 0);
+
+  ASSERT_TRUE(ptr == nullptr);
+  EXPECT_LONG_EQ((long)arena.index, 0);
+  EXPECT_LONG_EQ((long)arena.allocations, 0);
+}
+
 TEST(arena_alloc_aligned_tests, rejects_non_power_of_two_alignment) {
   char region[64];
   Arena arena;
