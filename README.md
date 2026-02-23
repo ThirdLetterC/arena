@@ -530,7 +530,7 @@ The tests and examples were compiled and successfully run on the following opera
 
 ### RESTRICTED UNTIL ISSUE #18 IS RESOLVED
 
-I recently cleaned up the project. Things were tested... semi-thoroughly. But I haven't re-written the tests, so while the code is production-ready, it is *not* open to any contributions aside from issue #18 until that is resolved. If you want to write the rest of the tests in `src/tests.c`, go for it. I'll get to it eventually...
+I recently cleaned up the project. Things were tested... semi-thoroughly. But I haven't re-written the tests, so while the code is production-ready, it is *not* open to any contributions aside from issue #18 until that is resolved. If you want to write the rest of the tests in `testing/tests.c`, go for it. I'll get to it eventually...
 
 ### Basic Guidelines
 
@@ -552,7 +552,7 @@ At the moment there is no documentation for the code style, but it should be rel
 
 * If you modify `arena.h` whatsoever, you must run the tests. See the next section.
 
-* If you add a feature within `arena.h`, you must create an adequate test or tests within `src/tests.c`.
+* If you add a feature within `arena.h`, you must create an adequate test or tests within `testing/tests.c`.
 
 * If you add a feature within `arena.h`, you must *should* an adequate example in `examples/` **and** add it to the `justfile`, but it is not required.
 
@@ -562,11 +562,11 @@ This library uses [rktest](https://github.com/Warwolt/rktest) for testing.
 
 If you change `arena.h` whatsoever, **run the tests before opening a PR**. If you open a PR with modifictions to the code and the tests don't all pass, make a comment on your PR stating which test you believe is wrong and is preventing you from passing all of the tests. If any test fails and your PR doesn't have a comment that claims to correct a failed test, your PR will be ignored closed.
 
-Outside of addressing bugs and feature requests, fulfilling a feature request or bug fix for functionality within `arena.h` permits modifying or adding relevant testing code within `src/tests.c`, and you must do so if you want your PR to be acknowledged. There is documentation for testing code within `src/tests.c` at the top of the file in the form of comments.
+Outside of addressing bugs and feature requests, fulfilling a feature request or bug fix for functionality within `arena.h` permits modifying or adding relevant testing code within `testing/tests.c`, and you must do so if you want your PR to be acknowledged. There is documentation for testing code within `testing/tests.c` at the top of the file in the form of comments.
 
 The tests must also pass through valgrind leak-free, and `arena.h` **must** be
 C23 compliant. You should check this using the `justfile`, but if for some
-reason you can't or don't want to, compile `src/tests.c` with:
+reason you can't or don't want to, compile `testing/tests.c` with:
 
 ```
 -std=c23 -Werror -Wall -Wextra -Wpedantic \

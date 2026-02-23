@@ -52,7 +52,7 @@ pub fn build(b: *std.Build) void {
         .root_module = tests_module,
     });
     tests_exe.pie = true;
-    tests_exe.addCSourceFile(.{ .file = b.path("src/tests.c"), .flags = test_cflags });
+    tests_exe.addCSourceFile(.{ .file = b.path("testing/tests.c"), .flags = test_cflags });
     tests_exe.addCSourceFile(.{ .file = b.path("src/rktest.c"), .flags = test_cflags });
     tests_exe.addCSourceFile(.{ .file = b.path("src/arena.c"), .flags = test_cflags });
     tests_exe.addIncludePath(b.path("include"));

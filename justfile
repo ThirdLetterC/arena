@@ -16,13 +16,13 @@ include_dir := "include"
 use_mimalloc := env_var_or_default("USE_MIMALLOC", "0")
 mimalloc_cflags := if use_mimalloc == "1" { "-DARENA_USE_MIMALLOC" } else { "" }
 mimalloc_ldflags := if use_mimalloc == "1" { "-lmimalloc" } else { "" }
-format_files := "src/arena.c include/arena/arena.h src/tests.c examples/*.c"
+format_files := "src/arena.c include/arena/arena.h testing/tests.c examples/*.c"
 
 default: tests
 
 tests:
     ZIG_GLOBAL_CACHE_DIR={{zig_global_cache_dir}} {{cc}} {{cflags}} {{mimalloc_cflags}} -I{{include_dir}} -c -o arena.o src/arena.c
-    ZIG_GLOBAL_CACHE_DIR={{zig_global_cache_dir}} {{cc}} {{cflags}} -Wno-newline-eof {{mimalloc_cflags}} -I{{include_dir}} -o test src/tests.c src/rktest.c arena.o -lm {{ldflags}} {{mimalloc_ldflags}}
+    ZIG_GLOBAL_CACHE_DIR={{zig_global_cache_dir}} {{cc}} {{cflags}} -Wno-newline-eof {{mimalloc_cflags}} -I{{include_dir}} -o test testing/tests.c src/rktest.c arena.o -lm {{ldflags}} {{mimalloc_ldflags}}
 
 test:
     USE_SANITIZERS=0 just tests
