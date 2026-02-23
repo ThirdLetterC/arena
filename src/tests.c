@@ -1,7 +1,7 @@
-#include <rktest/rktest.h>
+#include "rktest/rktest.h"
 
 #define ARENA_DEBUG
-#include <arena/arena.h>
+#include "arena/arena.h"
 
 TEST(arena_init_tests, init) {
   Arena arena;
