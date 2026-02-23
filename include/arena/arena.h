@@ -569,19 +569,17 @@ void *arena_alloc_aligned(Arena *arena, size_t size, size_t alignment) {
 
   size_t aligned_index = arena->index;
 
-  if (alignment != 0) {
-    if ((alignment & (alignment - 1)) != 0) {
-      return nullptr;
-    }
-
-    const size_t alignment_mask = alignment - 1;
-    size_t padded_index = 0;
-    if (ckd_add(&padded_index, aligned_index, alignment_mask)) {
-      return nullptr;
-    }
-
-    aligned_index = padded_index & ~alignment_mask;
+  if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
+    return nullptr;
   }
+
+  const size_t alignment_mask = alignment - 1;
+  size_t padded_index = 0;
+  if (ckd_add(&padded_index, aligned_index, alignment_mask)) {
+    return nullptr;
+  }
+
+  aligned_index = padded_index & ~alignment_mask;
 
   size_t end_index = 0;
   if (ckd_add(&end_index, aligned_index, size)) {
