@@ -1,0 +1,46 @@
+# Security Model
+
+Trust boundaries:
+- All inputs to the public API (`Arena*`, region pointers, sizes, alignments) are untrusted until validated by the caller and/or this library's parameter checks.
+- Any size/alignment values derived from external data remain attacker-controlled at the call site.
+- Custom allocator/copy hooks (`ARENA_MALLOC`, `ARENA_FREE`, `ARENA_MEMCPY`) are part of the trusted computing base when overridden.
+
+Attacker model:
+- An attacker can influence allocation sizes, alignment values, and allocation cadence through application-level inputs.
+- An attacker can attempt integer-overflow edge cases using near-`SIZE_MAX` indexes, sizes, and alignment padding.
+- An attacker can induce allocation failure paths by exhausting memory.
+- An attacker can trigger repeated clear/copy/allocation transitions to stress allocator state handling.
+
+Protected assets:
+- Process memory safety for allocations performed through this arena.
+- Arena state consistency (`index`, `size`, region boundaries) during success and failure paths.
+- Service availability under malformed or adversarial allocation requests.
+
+Defensive posture:
+- Initialization enforces region/size consistency: `arena_init` rejects mismatched `(region == nullptr)` vs `(size == 0)`.
+- Creation fails closed: `arena_create(0)` returns `nullptr`; allocation failures return `nullptr` and clean up partial state.
+- Allocation APIs fail closed: `arena_alloc_aligned` rejects zero-sized requests, null arena/region pointers, and invalid `index > size` state.
+- Alignment validation enforces power-of-two constraints and rejects invalid alignments.
+- Index and end-offset math use checked addition (`ckd_add` from `<stdckdint.h>` when available, with a local overflow-checked fallback otherwise).
+- Allocation bounds are enforced before pointer return (`end_index <= arena->size`).
+- Failed allocation attempts do not advance `arena->index`.
+- Copy operations validate arena pointers/regions and clamp byte count to `min(dest->size, min(src->index, src->size))`.
+- Copy skips `memcpy` on zero bytes, avoiding undefined zero-length edge misuse with null regions.
+- Debug allocation tracking (`ARENA_DEBUG`) is optional and best-effort; metadata allocation failure does not corrupt arena state.
+- `arena_clear` resets allocation cursor and frees debug tracking nodes when enabled.
+- `arena_destroy` frees debug metadata first, then region, then arena object.
+- Default allocation path uses zero-initializing `calloc` for arena objects and regions (or mimalloc `mi_calloc` when enabled).
+- Public APIs return explicit failure values (`nullptr`/`0`) instead of partial-success semantics.
+
+Limitations and caller responsibilities:
+- This library is not thread-safe; callers must synchronize shared arenas.
+- This library does not provide secret zeroization on clear/destroy; callers handling secrets must wipe sensitive buffers before release.
+- Pointer provenance/lifetime remains a caller contract; passing invalid or stale arena/region pointers is out of scope.
+- Overrunning returned arena slices is a caller bug and can still violate memory safety.
+
+Build hardening:
+- Build defaults enforce `-std=c23 -Wall -Wextra -Wpedantic -Werror`.
+- Hardened builds include stack and libc hardening flags (`-fstack-protector-strong`, `-D_FORTIFY_SOURCE=3`, `-fPIE`, and PIE linking).
+- Link hardening in the `justfile` includes RELRO/now (`-Wl,-z,relro,-z,now -pie`).
+- Debug/test workflows support sanitizers (`-fsanitize=address,undefined,leak`) and stack traces (`-fno-omit-frame-pointer`).
+- Zig debug builds enable C sanitization (`sanitize_c = .full`) for tests/examples.
