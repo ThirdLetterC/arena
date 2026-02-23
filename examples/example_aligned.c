@@ -1,7 +1,7 @@
 #include <stdio.h> // printf
 
 #define ARENA_IMPLEMENTATION
-#include <arena/arena.h>
+#include "arena/arena.h"
 
 int main() {
   constexpr size_t arena_size = 1'024; // Allocate a 1kB arena
