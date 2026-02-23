@@ -62,3 +62,5 @@ gdb.txt
 .zig-cache/
 .zig-global-cache/
 zig-out/
+
+_codeql_detected_source_root
